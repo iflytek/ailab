@@ -45,15 +45,15 @@ from chat import ChatWrapper, set_openai_api_key
 class UserRequest(object):
     # StringParamField多用于控制参数
     # 指明 enums, maxLength, required有助于自动根据要求配置协议schema
-    params1 = StringParamField(key="p1", enums=["3", "eee"], value='3')
-    params2 = StringParamField(key="p2", maxLength=44, required=True)
-    params3 = StringParamField(key="p3", maxLength=44, required=False)
+    #params1 = StringParamField(key="message", value=b'')
+    #params2 = StringParamField(key="p2", maxLength=44, required=True)
+    #params3 = StringParamField(key="p3", maxLength=44, required=False)
 
     # imagebodyfield 指明path，有助于本地调试wrapper.py
-    input1 = ImageBodyField(key="data", path="test_data/test.png")
-    input3 = ImageBodyField(key="data2", path="test_data/test.png")
+    #input1 = ImageBodyField(key="message", path="test_data/test.png")
+    #input3 = ImageBodyField(key="data2", path="test_data/test.png")
     # stringbodyfiled 指明 value，用于本地调试时的测试值
-    input2 = StringBodyField(key="switch", value="ctrl")
+    input2 = StringBodyField(key="message", value=b"ctrl")
 
 
 '''
@@ -68,10 +68,7 @@ class UserResponse(object):
     # 此类定义响应返回数据段，请务必指明对应key
     # 支持 ImageBodyField， AudioBodyField,  StringBodyField
     # 如果响应是json， 请使用StringBodyField
-    accept1 = StringBodyField(key="boxes")
-    accept2 = StringBodyField(key="boxes2")
-
-
+    accept1 = StringBodyField(key="response")
 '''
 用户实现， 名称必须为Wrapper, 必须继承SDK中的 WrapperBase类
 '''
@@ -105,7 +102,7 @@ class Wrapper(WrapperBase):
     非会话模式计算接口,对应oneShot请求,可能存在并发调用
     @param params 功能参数
     @param  reqData     请求数据实体字段 DataListCls,可通过 aiges.dto.DataListCls查看
-    @return 
+    @return
         响应必须返回 Response类，非Response类将会引起未知错误
     '''
 
@@ -157,7 +154,7 @@ class Wrapper(WrapperBase):
     '''
     非会话模式计算接口,对应oneShot请求,可能存在并发调用
     @param ret wrapperOnceExec返回的response中的error_code 将会被自动传入本函数并通过http响应返回给最终用户
-    @return 
+    @return
         str 错误提示会返回在接口响应中
     '''
 
