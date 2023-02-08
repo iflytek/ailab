@@ -301,8 +301,9 @@ class WorkerThread(StreamHandleThread):
         literary_style_state = "N/A"
         docsearch_state = None
         use_embeddings_state = False
+        msg = req.get('message').data.decode('utf-8')
         self.chatbot, self.history_state, video_html, my_file, audio_html, tmp_aud_file, message = self.chat(
-            self.api_key, req.get("message"),
+            self.api_key, msg,
             self.history_state,
             self.chain_state,
             trace_chain_state,
