@@ -26,6 +26,7 @@ from aiges.utils.log import log, getFileLogger
 import io
 
 from ifly_atp_sdk.huggingface.pipelines import pipeline
+# from transformers import pipeline
 
 
 # 定义模型的超参数和输入参数
@@ -53,7 +54,7 @@ class Wrapper(WrapperBase):
 
     def wrapperInit(self, config: {}) -> int:
         log.info("Initializing ...")
-        self.pipe = pipeline(task='zero-shot-classification', model="/Users/yangyanbo/cache/facebook/bart-large-mnli")
+        self.pipe = pipeline( model="facebook/bart-large-mnli")
         self.filelogger = getFileLogger()
         return 0
 
