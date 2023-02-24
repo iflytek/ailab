@@ -1,1 +1,5 @@
+# PyCharm文件
 .idea/
+
+# 日志
+*.log

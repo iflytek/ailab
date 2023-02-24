@@ -18,7 +18,7 @@ except:
     from aiges.dto import Response, ResponseData, DataListNode, DataListCls
 
 from aiges.sdk import WrapperBase, \
-    ImageBodyField, \
+    AudioBodyField, \
     StringBodyField, StringParamField
 from aiges.utils.log import log, getFileLogger
 
@@ -31,7 +31,7 @@ from transformers import pipeline
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    input1 = StringBodyField(key="text", value=b"I have a problem with my iphone that needs to be resolved asap!!")
+    input1 = AudioBodyField(key="audio", path="./audio/mlk.flac")
     input2 = StringParamField(key="task", value="automatic-speech-recognition")
 
 
@@ -42,7 +42,7 @@ class UserResponse(object):
 
 # 定义服务推理逻辑
 class Wrapper(WrapperBase):
-    serviceId = "text_pipeline"
+    serviceId = "speech_recognition_pipeline"
     version = "v1"
     requestCls = UserRequest()
     responseCls = UserResponse()
@@ -54,16 +54,17 @@ class Wrapper(WrapperBase):
 
     def wrapperInit(self, config: {}) -> int:
         log.info("Initializing ...")
-        self.pipe = pipeline( model="facebook/bart-large-mnli")
+        # TODO openai模型6G太大了，以后再来下载
+        # self.pipe = pipeline(model="openai/whisper-large")
+        self.pipe = pipeline(model="facebook/wav2vec2-base-960h")
         self.filelogger = getFileLogger()
         return 0
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
         # 读取测试图片并进行模型推理
         self.filelogger.info("got reqdata , %s" % reqData.list)
-        input_text = reqData.get("text").data.decode('utf-8')
-        result = self.pipe(input_text,
-                           candidate_labels=["urgent", "not urgent", "phone", "tablet", "computer"], )
+        input_audio = reqData.get("audio").data
+        result = self.pipe(input_audio)
 
         self.filelogger.info(result)
         # 使用Response封装result
