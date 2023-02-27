@@ -424,7 +424,7 @@ class ChatWrapper:
 
 
 if __name__ == '__main__':
-    api_key = "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"
+    api_key = "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"
     chain_state, express_chain_state, llm_state, embeddings_state, qa_chain_state, memory_state = set_openai_api_key(
         api_key)
     chat = ChatWrapper()

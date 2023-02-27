@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "ifly-ailab"
+version = "0.1.0"
+description = "a iflytek ailab library ..."
+authors = ["ybyang <ybyang7@iflytek.com>"]
+license = "Apache License 2"
+packages = [
+    {include = "ailab", from="src"}
+]
+[tool.poetry.dependencies]
+python = ">3.7"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
