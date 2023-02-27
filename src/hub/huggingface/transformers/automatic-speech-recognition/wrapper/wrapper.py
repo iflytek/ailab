@@ -42,7 +42,7 @@ class UserResponse(object):
 
 # 定义服务推理逻辑
 class Wrapper(WrapperBase):
-    serviceId = "speech_recognition_pipeline"
+    serviceId = "automatic-speech-recognition-pipeline"
     version = "v1"
     requestCls = UserRequest()
     responseCls = UserResponse()
@@ -55,6 +55,7 @@ class Wrapper(WrapperBase):
     def wrapperInit(self, config: {}) -> int:
         log.info("Initializing ...")
         # TODO openai模型6G太大了，以后再来下载
+        # 机器中需要预装ffmpeg
         # self.pipe = pipeline(model="openai/whisper-large")
         self.pipe = pipeline(model="facebook/wav2vec2-base-960h")
         self.filelogger = getFileLogger()
