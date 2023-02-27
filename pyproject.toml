@@ -9,7 +9,7 @@ packages = [
 ]
 [tool.poetry.dependencies]
 python = ">3.7"
-
+pyailab = ">0.0"
 [tool.poetry.dev-dependencies]
 
 [build-system]
