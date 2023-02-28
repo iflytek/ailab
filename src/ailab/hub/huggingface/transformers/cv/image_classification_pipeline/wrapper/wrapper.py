@@ -2,8 +2,9 @@
 # coding:utf-8
 """
 @license: Apache License2
-@file: wrapper.py
-@time: 2023.02.27
+@Author: xiaohan4
+@time: 2023/02/27
+@project: ailab
 """
 import json
 import os.path
@@ -25,6 +26,7 @@ import io
 
 # from ifly_atp_sdk.huggingface.pipelines import pipeline
 from transformers import pipeline
+from PIL import Image
 
 # 使用的模型
 model = "microsoft/beit-base-patch16-224-pt22k-ft22k"
@@ -64,8 +66,9 @@ class Wrapper(WrapperBase):
         # 读取测试图片并进行模型推理
         # TODO 打印出来具体的内容，而不是地址
         self.filelogger.info("got reqdata , %s" % reqData.list)
-        input = reqData.get("image").data.content
-        result = self.pipe(input)
+        input = reqData.get("image").data
+        img = Image.open(io.BytesIO(input))
+        result = self.pipe(img)
         self.filelogger.info("result: %s" % result)
 
         # 使用Response封装result
