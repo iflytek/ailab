@@ -107,5 +107,5 @@ def get_datasets():
     pass
 
 if __name__ == '__main__':
-    #download_models()
-    get_datasets()
+    download_models()
+    # get_datasets()
