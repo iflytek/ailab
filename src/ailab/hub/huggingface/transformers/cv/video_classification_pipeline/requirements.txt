@@ -2,3 +2,4 @@
 aiges
 transformers
 torch
+decord
