@@ -7,29 +7,100 @@
 @project: chat-gpt-lang-chain
 @project: ./
 """
-
+import datetime
+import random
 import sys
 import hashlib
 
 try:
     from aiges_embed import ResponseData, Response, DataListNode, DataListCls, SessionCreateResponse, callback  # c++
 except:
-    from aiges.dto import Response, ResponseData, DataListNode, DataListCls, SessionCreateResponse, callback
+    from aiges.dto import Response, ResponseData, DataListNode, DataListCls, SessionCreateResponse
 
-from aiges.stream import StreamHandleThread
+from aiges.callback import callback
 from aiges.sdk import WrapperBase, \
     StringParamField, \
     ImageBodyField, \
     StringBodyField
-from aiges.utils.log import log
+from aiges.utils.log import getFileLogger
 from aiges.core.types import *
 
+log = getFileLogger()
 ########
 # 请在此区域导入您的依赖库
 
 # Todo
 # for example: import numpy
-from chat import ChatWrapper, set_openai_api_key
+from langchain import ConversationChain, LLMChain, PromptTemplate
+from langchain.llms import OpenAIChat
+from langchain.chains.conversation.memory import ConversationalBufferWindowMemory
+from aiges.concurrent.fixpool import FixedPool
+from aiges.worker import Worker, InferClass
+
+
+class Infer(InferClass):
+
+    def __init__(self, params={}, tag="", sid=None):
+        self.tag = tag
+        self.sid = sid
+        template = """Assistant is a large language model trained by OpenAI.
+
+        Assistant is designed to be able to assist with a wide range of tasks, from answering simple questions to providing in-depth explanations and discussions on a wide range of topics. As a language model, Assistant is able to generate human-like text based on the input it receives, allowing it to engage in natural-sounding conversations and provide responses that are coherent and relevant to the topic at hand.
+
+        Assistant is constantly learning and improving, and its capabilities are constantly evolving. It is able to process and understand large amounts of text, and can use this knowledge to provide accurate and informative responses to a wide range of questions. Additionally, Assistant is able to generate its own text based on the input it receives, allowing it to engage in discussions and provide explanations and descriptions on a wide range of topics.
+
+        Overall, Assistant is a powerful tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist.
+
+        {history}
+        Human: {human_input}
+        Assistant:"""
+
+        prompt = PromptTemplate(
+            input_variables=["history", "human_input"],
+            template=template
+        )
+
+        self.model = LLMChain(llm=OpenAIChat(model_name='gpt-3.5-turbo', temperature=0,
+                                             openai_api_key=params.get("api_key")),
+                              prompt=prompt,
+                              verbose=True,
+                              memory=ConversationalBufferWindowMemory(k=100),
+                              )
+
+    def setHandle(self, hdl):
+        log.debug("#### setinghandl %s" % hdl)
+        self.handle = hdl
+
+    def predict(self, *args, **kwargs):
+        # 实现并回调结果
+        log.info(kwargs)
+        req = kwargs.get('req').get("message")
+        input_text = req.data.decode('utf-8')
+        input_status = req.status
+        r = random.randint(1, 100000)
+        now = datetime.datetime.now().strftime("%y-%m-%d: %H:%M")
+        output = f'iam the mock result for test: {now}  {r}'
+
+        # output = self.model.predict(human_input=input_text)
+        r = Response()
+        d = ResponseData()
+        d.setData(output.encode("utf-8"))
+        all_done = False
+        d.key = "response"
+        if input_status == DataContinue:
+            d.status = DataContinue
+        elif input_status == DataEnd:
+            d.status == DataEnd
+            all_done = True
+
+        elif input_status == DataOnce:
+            d.status = DataEnd
+            all_done = True
+        r.list = [d]
+        log.debug("handle callback %s" % self.tag)
+        callback(r, self.tag, self.sid)
+        return output, all_done
+
 
 '''
 定义请求类:
@@ -45,15 +116,17 @@ from chat import ChatWrapper, set_openai_api_key
 class UserRequest(object):
     # StringParamField多用于控制参数
     # 指明 enums, maxLength, required有助于自动根据要求配置协议schema
-    #params1 = StringParamField(key="message", value=b'')
-    #params2 = StringParamField(key="p2", maxLength=44, required=True)
-    #params3 = StringParamField(key="p3", maxLength=44, required=False)
+    # params1 = StringParamField(key="message", value=b'')
+    # params2 = StringParamField(key="p2", maxLength=44, required=True)
+    params3 = StringParamField(key="api_key", maxLength=44, required=True,
+                               value=b"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")
 
     # imagebodyfield 指明path，有助于本地调试wrapper.py
-    #input1 = ImageBodyField(key="message", path="test_data/test.png")
-    #input3 = ImageBodyField(key="data2", path="test_data/test.png")
+    # input1 = ImageBodyField(key="message", path="test_data/test.png")
+    # input3 = ImageBodyField(key="data2", path="test_data/test.png")
     # stringbodyfiled 指明 value，用于本地调试时的测试值
-    input2 = StringBodyField(key="message", value=b"ctrl")
+    c = "计算机是由什么组成的?".encode("utf-8")
+    input2 = StringBodyField(key="message", value=c)
 
 
 '''
@@ -69,13 +142,16 @@ class UserResponse(object):
     # 支持 ImageBodyField， AudioBodyField,  StringBodyField
     # 如果响应是json， 请使用StringBodyField
     accept1 = StringBodyField(key="response")
+
+
 '''
 用户实现， 名称必须为Wrapper, 必须继承SDK中的 WrapperBase类
 '''
 
 
 class Wrapper(WrapperBase):
-    serviceId = "mmocr"
+    serviceId = "chatgpt"
+    call_type = 1
     version = "backup.0"
     requestCls = UserRequest()
     responseCls = UserResponse()
@@ -93,9 +169,12 @@ class Wrapper(WrapperBase):
     def wrapperInit(self, config: {}) -> int:
         log.info(config)
         log.info("Initializing ...")
-        Wrapper.session_total = config.get("common.lic", 1)
-        self.session.init_wrapper_config(config)
-        self.session.init_handle_pool("thread", 1, WorkerThread)
+        lics = 10
+        self.pool = FixedPool()
+        self.pool.set_capacity(int(config.get("common.lic", lics)))
+        # Wrapper.session_total = config.get("common.lic", lics)
+        # self.session.init_wrapper_config(config)
+        # self.session.init_handle_pool("thread", lics, InfermStream)
         return 0
 
     '''
@@ -107,39 +186,11 @@ class Wrapper(WrapperBase):
     '''
 
     def wrapperOnceExec(cls, params: {}, reqData: DataListCls) -> Response:
-        log.info("got reqdata , %s" % reqData.list)
-        #        print(type(reqData.list[0].data))
-        #        print(type(reqData.list[0].data))
-        #        print(reqData.list[0].len)
-        for req in reqData.list:
-            log.info("reqData key: %s , size is %d" % (req.key, len(req.data)))
-        log.warning("reqData bytes md5sum is %s" % hashlib.md5(reqData.list[0].data).hexdigest())
-        log.info("I am infer logic...please inplement")
-        log.info("Testing reqData get: ")
-        rg = reqData.get("data")
-        log.info("get key: %s" % rg.key)
-        log.info("get key: %d" % len(rg.data))
-
-        # test not reqdata
-        k = "dd"
-        n = reqData.get(k)
-        if not n:
-            log.error("reqData not has this key %s" % k)
-
-        log.warning("reqData bytes md5sum is %s" % hashlib.md5(reqData.list[0].data).hexdigest())
-        log.info("I am infer logic...please inplement")
-        r = Response()
-        # 错误处理
-        # return r.response_err(100)
-        l = ResponseData()
-        l.key = "ccc"
-        l.status = 1
-        d = open("test_data/test.png", "rb").read()
-        l.len = len(d)
-        l.data = d
-        l.type = 0
-        r.list = [l, l, l]
-        return r
+        pass
+        print("#####")
+        print(params)
+        print(reqData)
+        return None
 
     '''
     服务逆初始化
@@ -168,46 +219,37 @@ class Wrapper(WrapperBase):
     '''
 
     def wrapperTestFunc(cls, data: [], respData: []):
-        r = Response()
-        l = ResponseData()
-        l.key = "ccc"
-        l.status = 1
-        d = open("pybind11/docs/pybind11-logo.png", "rb").read()
-        l.len = len(d)
-        l.data = d
-        r.list = [l, l, l]
-        return r
+        pass
+        return None
 
-    def wrapperCreate(self, params: {}, sid: str) -> SessionCreateResponse:
+    def wrapperCreate(self, params: {}, sid: str, userTag: str = "") -> SessionCreateResponse:
         """
         非会话模式计算接口,对应oneShot请求,可能存在并发调用
         @param ret wrapperOnceExec返回的response中的error_code 将会被自动传入本函数并通过http响应返回给最终用户
         @return
             SessionCreateResponse类, 如果返回不是该类会报错
         """
+        log.info("Getting paramas: %s" % str(params))
+        worker = Worker()
+        worker.register_infer_class(Infer(params, userTag, sid))
+        worker.register_infer_func(self.wrapperOnceExec)
+        worker.register_callback(callback)
+
+        ok, handle = self.pool.add(worker)
+
         sp = SessionCreateResponse()
-        # 这里是取 handle
-        handle = self.session.get_idle_handle()
-        if not handle:
-            sp.error_code = -1
-            sp.handle = ""
-            return sp
 
-        _session = self.session.get_session(handle=handle)
-        if _session == None:
-            log.info("can't create this handle:" % handle)
-            sp.error_code = -1
+        if not ok:
             sp.handle = ""
+            sp.error_code = 40001
             return sp
-        _session.setup_sid(sid)
-        _session.setup_params(params)
-        _session.setup_callback_fn(callback)
+        worker.setHandle(handle)
+        worker.start()
 
-        # print(sid)
-        s = SessionCreateResponse()
-        s.handle = handle
-        s.error_code = 0
-        return s
+        # _session.setup_callback_fn(callback)
+        sp.handle = handle
+        sp.error_code = 0
+        return sp
 
     def wrapperWrite(self, handle: str, req: DataListCls, sid: str) -> int:
         """
@@ -217,9 +259,10 @@ class Wrapper(WrapperBase):
         :param sid:  请求会话ID
         :return:
         """
-        _session = self.session.get_session(handle=handle)
+        _session = self.pool.get(handle)
+        # _session = self.session.get_session(handle=handle)
         if _session == None:
-            log.info("can't get this handle:" % handle)
+            log.info("can't get this handle: %s" % handle)
             return -1
         _session.in_q.put(req)
         return 0
@@ -233,101 +276,15 @@ class Wrapper(WrapperBase):
         :param sid: 请求会话ID
         :return: Response类
         """
-        _session = self.session.get_session(handle=handle)
-        r = Response()
-        l = ResponseData()
-        if _session.out_q.empty():
-            l.status = 1
-            l.len = 0
-            l.data = b''
-            l.key = "boxes"
-            r.list = [l]
-            return r
-        rs = _session.out_q.get()
-        if rs.list[0].status == DataEnd:
-            _session.reset()
-        if not isinstance(rs, Response):
-            raise Exception("check response")
+        return None
 
-        return rs
-
-
-class WorkerThread(StreamHandleThread):
-    """
-    流式示例 thread，
-    """
-
-    def __init__(self, session_thread, in_q, out_q):
-        super().__init__(session_thread, in_q, out_q)
-        self.api_key = "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"
-
-    def init_chat(self, *args, **kwargs):
-        self.history_state = []
-        self.chain_state, self.express_chain_state, self.llm_state, self.embeddings_state, \
-        self.qa_chain_state, self.memory_state = set_openai_api_key(
-            self.api_key)
-
-        self.chat = ChatWrapper()
-
-    def run(self):
-        self.init_chat(self.session_thread.handle)
-        while True:
-            req = self.in_q.get()
-            # print("#######get####")
-            # print(self.session_thread.params)
-            self.infer(req)
-
-    def infer(self, req: DataListCls):
-        trace_chain_state = False
-        speak_text_state = False
-        talking_head_state = True
-        monologue_state = False
-        express_chain_state = None
-        num_words_state = 0
-        formality_state = "N/A"
-        anticipation_level_state = "N/A"
-        joy_level_state = "N/A"
-        trust_level_state = "N/A"
-        fear_level_state = "N/A"
-        surprise_level_state = "N/A"
-        sadness_level_state = "N/A"
-        disgust_level_state = "N/A"
-        anger_level_state = "N/A"
-        lang_level_state = "N/A"
-        translate_to_state = "N/A"
-        literary_style_state = "N/A"
-        docsearch_state = None
-        use_embeddings_state = False
-        msg = req.get('message').data.decode('utf-8')
-        self.chatbot, self.history_state, video_html, my_file, audio_html, tmp_aud_file, message = self.chat(
-            self.api_key, msg,
-            self.history_state,
-            self.chain_state,
-            trace_chain_state,
-            speak_text_state,
-            talking_head_state,
-            monologue_state,
-            express_chain_state,
-            num_words_state,
-            formality_state,
-            anticipation_level_state,
-            joy_level_state,
-            trust_level_state,
-            fear_level_state,
-            surprise_level_state,
-            sadness_level_state,
-            disgust_level_state,
-            anger_level_state,
-            lang_level_state,
-            translate_to_state,
-            literary_style_state,
-            self.qa_chain_state,
-            docsearch_state,
-            use_embeddings_state)
-        pass
+    def wrapperDestroy(self, handle: str) -> int:
+        log.debug("destroying %s" % handle)
+        self.pool.remove(handle)
+        return 0
 
 
 if __name__ == '__main__':
-    m = Wrapper()
-    # m.schema()
-    m.run()
+    m = Wrapper(legacy=False)
+    m.schema()
+    #m.run(stream=True)

@@ -30,9 +30,9 @@
 #  Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
 #  Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
 #  Vestibulum commodo. Ut rhoncus gravida arcu.
-from langchain import OpenAI, ConversationChain, LLMChain, PromptTemplate
+from langchain import ConversationChain, LLMChain, PromptTemplate
+from langchain.llms import OpenAIChat
 from langchain.chains.conversation.memory import ConversationalBufferWindowMemory
-
 
 template = """Assistant is a large language model trained by OpenAI.
 
@@ -51,12 +51,12 @@ prompt = PromptTemplate(
     template=template
 )
 
-
 chatgpt_chain = LLMChain(
-    llm=OpenAI(temperature=0),
+    llm=OpenAIChat(model_name='gpt-3.5-turbo', temperature=0,
+                   openai_api_key="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"),
     prompt=prompt,
     verbose=True,
-    memory=ConversationalBufferWindowMemory(k=10),
+    memory=ConversationalBufferWindowMemory(k=100),
 )
 
 output = chatgpt_chain.predict(human_input="计算机是由什么组成的?")

@@ -95,5 +95,6 @@ class Wrapper(WrapperBase):
 
 
 if __name__ == '__main__':
-    m = Wrapper()
-    m.run()
+    m = Wrapper(legacy=False)
+    #m.run()
+    print(m.schema())
