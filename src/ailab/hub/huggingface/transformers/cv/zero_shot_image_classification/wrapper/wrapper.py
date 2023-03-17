@@ -20,6 +20,7 @@ from aiges.sdk import WrapperBase, \
     JsonBodyField, StringBodyField, ImageBodyField, \
     StringParamField
 from aiges.utils.log import log, getFileLogger
+from aiges.core.types import Types, STRING, AUDIO, IMAGE, VIDEO
 
 # 导入inference.py中的依赖包
 import io
@@ -27,17 +28,17 @@ import io
 # from ifly_atp_sdk.huggingface.pipelines import pipeline
 from transformers import pipeline
 from PIL import Image
-import imageio
 
 # 使用的模型
-model = "MCG-NJU/videomae-base-finetuned-kinetics"
-task = "video-classification-pipeline"
+model = "openai/clip-vit-base-patch32"
+task = "zero-shot-image-classification-pipeline"
+keyType = Types[IMAGE]
 
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
     # 使用ImageBodyField接受的吗？
-    input1 = ImageBodyField(key="video", path='./person.mp4')
+    input1 = ImageBodyField(key=keyType, path='./img.png')
     input2 = StringParamField(key="task", value=task)
 
 
@@ -67,10 +68,9 @@ class Wrapper(WrapperBase):
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
         # 读取测试图片并进行模型推理
         self.filelogger.info("got reqdata , %s" % reqData.list)
-        input = reqData.get("video").data
-        # TODO 视频文件fp没找到
-        video=imageio.read(io.BytesIO(input))
-        result = self.pipe(video)
+        input = reqData.get(keyType).data
+        img = Image.open(io.BytesIO(input))
+        result = self.pipe(img, candidate_labels=["animals", "humans", "landscape"],)
         self.filelogger.info("result: %s" % result)
 
         # 使用Response封装result
