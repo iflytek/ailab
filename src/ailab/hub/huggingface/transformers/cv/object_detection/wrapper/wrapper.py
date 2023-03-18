@@ -25,15 +25,9 @@ from aiges.sdk import WrapperBase, \
 from aiges.utils.log import log, getFileLogger
 
 # 使用的模型
-model = "facebook/detr-resnet-50-panoptic"
-task = "image-segmentation"
+model = "hustvl/yolos-tiny"
+task = "object-detection"
 input1_key = "image"
-
-
-def imageToStr(image_byte):
-    base64_image_byte = base64.b64encode(image_byte)
-    image_str = base64_image_byte.decode('ascii')  # byte类型转换为str
-    return image_str
 
 
 # 定义模型的超参数和输入参数
@@ -70,16 +64,6 @@ class Wrapper(WrapperBase):
         img = Image.open(io.BytesIO(input))
         result = self.pipe(img)
         self.filelogger.info("result: %s" % result)
-
-        i = 0
-        for item in result:
-            i = i + 1
-            img_bytes = io.BytesIO()
-            img = item['mask']
-            img.convert("RGB")
-            img.save(img_bytes, format="JPEG")
-            img.save("./result_mask_" + str(i) + ".jpg", format="JPEG")
-            item['mask'] = imageToStr(img_bytes.getvalue())
 
         # 使用Response封装result
         res = Response()

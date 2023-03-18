@@ -85,6 +85,7 @@ class Wrapper(WrapperBase):
         img_bytes = io.BytesIO()
         depth.convert("RGB")
         depth.save(img_bytes, format="jpeg")
+        depth.save("./result_depth.jpeg", format="JPEG")
         resd1.setData(img_bytes.getvalue())
         res.list = [resd, resd1]
         return res
