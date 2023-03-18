@@ -87,7 +87,6 @@ class Wrapper(WrapperBase):
         depth.save(img_bytes, format="jpeg")
         resd1.setData(img_bytes.getvalue())
         res.list = [resd, resd1]
-        print(res.list)
         return res
 
     def wrapperFini(cls) -> int:
