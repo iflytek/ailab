@@ -5,7 +5,7 @@ related url: https://huggingface.co/tasks
 2. AutomaticSpeechRecognitionPipeline
 ## Computer vision
 1. DepthEstimationPipeline
-2. **ImageClassificationPipeline**
+2. ImageClassificationPipeline
 3. ImageSegmentationPipeline
 4. ObjectDetectionPipeline
 5. VideoClassificationPipeline
