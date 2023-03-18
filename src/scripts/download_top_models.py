@@ -89,7 +89,6 @@ def git_clone(task, model_name, revision, local_dir=defautl_download_dir):
 
 def download_models(workers_num=6):
     tm = get_task_models()
-    # 创建一个包含2条线程的线程池
     pool = ThreadPoolExecutor(max_workers=workers_num)
 
     futures = []

@@ -59,7 +59,6 @@ class Wrapper(WrapperBase):
         return 0
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
-        # 读取测试图片并进行模型推理
         self.filelogger.info("got reqdata , %s" % reqData.list)
         input_text = reqData.get("text").data.decode('utf-8')
         result = self.pipe(input_text,
