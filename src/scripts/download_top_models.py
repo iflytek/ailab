@@ -35,9 +35,8 @@ from pprint import pprint
 from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 import datasets
 import subprocess
-from transformers.pipelines import get_default_model_and_revision, check_task
+from transformers.pipelines import get_default_model_and_revision, check_task, SUPPORTED_TASKS
 from transformers.utils import HUGGINGFACE_CO_RESOLVE_ENDPOINT
-from transformers.pipelines import SUPPORTED_TASKS
 
 defautl_download_dir = "/mnt/atpdata/models_hub/huggingface"
 
