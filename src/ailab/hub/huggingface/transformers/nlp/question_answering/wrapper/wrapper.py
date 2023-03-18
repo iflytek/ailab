@@ -24,14 +24,16 @@ from aiges.sdk import WrapperBase, \
 from aiges.utils.log import log, getFileLogger
 
 # 使用的模型
-model = "distilroberta-base"
-task = "fill-mask"
-input1_key = "text"
+model = "distilbert-base-cased-distilled-squad"
+task = "question-answering"
+input1_key = "question"
+input2_key = "context"
 
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    input1 = StringBodyField(key=input1_key, value="<mask> is better than money".encode("utf-8"))
+    input1 = StringBodyField(key=input1_key, value="What is the most expensive object in this world?".encode("utf-8"))
+    input2 = StringBodyField(key=input2_key, value="Life is precious, love is more precious.".encode("utf-8"))
 
 
 # 定义模型的输出参数
@@ -59,8 +61,9 @@ class Wrapper(WrapperBase):
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
         self.filelogger.info("got reqdata , %s" % reqData.list)
-        input_text = reqData.get(input1_key).data.decode("utf-8")
-        result = self.pipe(input_text)
+        question = reqData.get(input1_key).data.decode("utf-8")
+        context = reqData.get(input2_key).data.decode("utf-8")
+        result = self.pipe(question, context)
         self.filelogger.info("result: %s" % result)
 
         # 使用Response封装result

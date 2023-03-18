@@ -59,7 +59,7 @@ class Wrapper(WrapperBase):
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
         self.filelogger.info("got reqdata , %s" % reqData.list)
-        input_text = reqData.get("text").data.decode("utf-8")
+        input_text = reqData.get(input1_key).data.decode("utf-8")
         conversation = Conversation(input_text)
         result = self.pipe(conversation).generated_responses[-1]
         self.filelogger.info("result: %s" % result)
