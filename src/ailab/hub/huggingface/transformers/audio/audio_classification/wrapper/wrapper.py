@@ -8,9 +8,9 @@
 """
 
 import json
-import os.path
-
 from aiges.core.types import *
+# from ifly_atp_sdk.huggingface.pipelines import pipeline
+from transformers import pipeline
 
 try:
     from aiges_embed import ResponseData, Response, DataListNode, DataListCls  # c++
@@ -22,17 +22,14 @@ from aiges.sdk import WrapperBase, \
     StringBodyField, StringParamField
 from aiges.utils.log import log, getFileLogger
 
-# 导入inference.py中的依赖包
-import io
-
-# from ifly_atp_sdk.huggingface.pipelines import pipeline
-from transformers import pipeline
+task = "audio-classification"
+model = "superb/wav2vec2-base-superb-ks"
+input1_key = "audio"
 
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    input1 = AudioBodyField(key="audio", path="./mlk.flac")
-    input2 = StringParamField(key="task", value="automatic-speech-recognition")
+    input1 = AudioBodyField(key=input1_key, path="./mlk.flac")
 
 
 # 定义模型的输出参数
@@ -42,7 +39,7 @@ class UserResponse(object):
 
 # 定义服务推理逻辑
 class Wrapper(WrapperBase):
-    serviceId = "automatic-speech-recognition-pipeline"
+    serviceId = task
     version = "v1"
     requestCls = UserRequest()
     responseCls = UserResponse()
@@ -54,10 +51,7 @@ class Wrapper(WrapperBase):
 
     def wrapperInit(self, config: {}) -> int:
         log.info("Initializing ...")
-        # TODO openai模型6G太大了，以后再来下载
-        # 机器中需要预装ffmpeg
-        # self.pipe = pipeline(model="openai/whisper-large")
-        self.pipe = pipeline(model="facebook/wav2vec2-base-960h")
+        self.pipe = pipeline(task=task, model=model)
         self.filelogger = getFileLogger()
         return 0
 
@@ -96,4 +90,4 @@ class Wrapper(WrapperBase):
 if __name__ == '__main__':
     m = Wrapper(legacy=False)
     m.run()
-    print(m.schema())
+    # print(m.schema())

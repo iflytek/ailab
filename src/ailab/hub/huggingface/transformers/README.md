@@ -1,6 +1,6 @@
 # pipeline
 related url: https://huggingface.co/tasks
-## Audio
+## Audio (预装ffmpeg)
 1. AudioClassificationPipeline
 2. AutomaticSpeechRecognitionPipeline
 ## Computer vision
