@@ -161,7 +161,7 @@ class ModelsDirectoryIter:
                     self.new_repo(task, repo, self.source, repo)
                 else:
                     for rp in fi_or_dirs2:
-                        level3_dir = f"{self.root}/{task}/{user}/{rp}"
+                        level3_dir = f"{self.root}/{task}/{u}/{rp}"
                         fi_or_dirs3 = os.listdir(level3_dir)
                         if "config.json" in fi_or_dirs3:
                             user = u
@@ -190,3 +190,5 @@ if __name__ == '__main__':
     # c.create_repo("test5", description="niubi")
     # c.create_org("huggingface")
     print(c.check_get_user("administrator"))
+    b = ModelsDirectoryIter()
+    print(len(b.repos))
