@@ -9,7 +9,7 @@
 
 import json
 # from ifly_atp_sdk.huggingface.pipelines import pipeline
-from transformers import pipeline, Conversation
+from transformers import pipeline
 
 from aiges.core.types import *
 

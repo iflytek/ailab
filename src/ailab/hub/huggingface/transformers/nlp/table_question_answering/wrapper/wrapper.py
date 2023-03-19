@@ -2,14 +2,15 @@
 # coding:utf-8
 """
 @license: Apache License2
-@Author: xiaohan4
-@time: 2023/03/18
+@Author: hanxiao
+@time: 2023/03/19
 @project: ailab
 """
 
 import json
 # from ifly_atp_sdk.huggingface.pipelines import pipeline
 from transformers import pipeline
+import pandas
 
 from aiges.core.types import *
 
@@ -24,14 +25,18 @@ from aiges.sdk import WrapperBase, \
 from aiges.utils.log import log, getFileLogger
 
 # 使用的模型
-model = "distilroberta-base"
-task = "fill-mask"
-input1_key = "text"
+model = "google/tapas-base-finetuned-wtq"
+task = "table-question-answering"
+input1_key = "table"
+input2_key = "query"
 
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    input1 = StringBodyField(key=input1_key, value="<mask> is better than money".encode("utf-8"))
+    input1 = StringBodyField(key=input1_key,
+                             value='{"Actors": ["Brad Pitt", "Leonardo Di Caprio", "George Clooney"], "Number of movies": ["87", "53", "69"]}'
+                             .encode("utf-8"))
+    input2 = StringBodyField(key=input2_key, value="how many movies does Leonardo Di Caprio have?".encode("utf-8"))
 
 
 # 定义模型的输出参数
@@ -60,7 +65,9 @@ class Wrapper(WrapperBase):
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
         self.filelogger.info("got reqdata , %s" % reqData.list)
         input_text = reqData.get(input1_key).data.decode("utf-8")
-        result = self.pipe(input_text)
+        table = pandas.DataFrame.from_dict(json.loads(input_text))
+        query = reqData.get(input2_key).data.decode("utf-8")
+        result = self.pipe(table, query)
         self.filelogger.info("result: %s" % result)
 
         # 使用Response封装result
