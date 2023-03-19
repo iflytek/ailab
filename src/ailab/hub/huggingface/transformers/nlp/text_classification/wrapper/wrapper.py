@@ -22,9 +22,6 @@ from aiges.sdk import WrapperBase, \
     StringBodyField, StringParamField
 from aiges.utils.log import log, getFileLogger
 
-# 导入inference.py中的依赖包
-import io
-
 # from ifly_atp_sdk.huggingface.pipelines import pipeline
 from transformers import pipeline
 
@@ -32,7 +29,6 @@ from transformers import pipeline
 # 定义模型的超参数和输入参数
 class UserRequest(object):
     input1 = StringBodyField(key="text", value=b"I have a problem with my iphone that needs to be resolved asap!!")
-    input2 = StringParamField(key="task", value="automatic-speech-recognition")
 
 
 # 定义模型的输出参数
@@ -42,7 +38,7 @@ class UserResponse(object):
 
 # 定义服务推理逻辑
 class Wrapper(WrapperBase):
-    serviceId = "text_pipeline"
+    serviceId = "text-classification"
     version = "v1"
     requestCls = UserRequest()
     responseCls = UserResponse()
@@ -54,16 +50,14 @@ class Wrapper(WrapperBase):
 
     def wrapperInit(self, config: {}) -> int:
         log.info("Initializing ...")
-        self.pipe = pipeline( model="facebook/bart-large-mnli")
+        self.pipe = pipeline(task="text-classification", model="distilbert-base-uncased-finetuned-sst-2-english")
         self.filelogger = getFileLogger()
         return 0
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
-        # 读取测试图片并进行模型推理
         self.filelogger.info("got reqdata , %s" % reqData.list)
         input_text = reqData.get("text").data.decode('utf-8')
-        result = self.pipe(input_text,
-                           candidate_labels=["urgent", "not urgent", "phone", "tablet", "computer"], )
+        result = self.pipe(input_text)
 
         self.filelogger.info(result)
         # 使用Response封装result

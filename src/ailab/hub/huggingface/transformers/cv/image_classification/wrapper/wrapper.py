@@ -2,10 +2,10 @@
 # coding:utf-8
 """
 @license: Apache License2
-@file: wrapper.py
-@time: 2023.02.27
+@Author: xiaohan4
+@time: 2023/02/27
+@project: ailab
 """
-
 import json
 import os.path
 
@@ -17,24 +17,24 @@ except:
     from aiges.dto import Response, ResponseData, DataListNode, DataListCls
 
 from aiges.sdk import WrapperBase, \
-    JsonBodyField, StringBodyField, \
+    JsonBodyField, StringBodyField, ImageBodyField, \
     StringParamField
 from aiges.utils.log import log, getFileLogger
 
-# 导入inference.py中的依赖包
 import io
-
 # from ifly_atp_sdk.huggingface.pipelines import pipeline
 from transformers import pipeline
+from PIL import Image
 
 # 使用的模型
-model = "distilbert-base-uncased-finetuned-sst-2-english"
+model = "microsoft/beit-base-patch16-224-pt22k-ft22k"
+task = "image-classification-pipeline"
 
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    input1 = StringBodyField(key="text", value=b"i feel full of power")
-    input2 = StringParamField(key="task", value="sentiment-analysis")
+    input1 = ImageBodyField(key="image", path='./img.png')
+    input2 = StringParamField(key="task", value=task)
 
 
 # 定义模型的输出参数
@@ -44,7 +44,7 @@ class UserResponse(object):
 
 # 定义服务推理逻辑
 class Wrapper(WrapperBase):
-    serviceId = "sentiment-analysis-pipeline"
+    serviceId = task
     version = "v1"
     requestCls = UserRequest()
     responseCls = UserResponse()
@@ -61,9 +61,11 @@ class Wrapper(WrapperBase):
         return 0
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
+        # 读取测试图片并进行模型推理
         self.filelogger.info("got reqdata , %s" % reqData.list)
-        input_text = reqData.get("text").data.decode("utf-8")
-        result = self.pipe(input_text)
+        input = reqData.get("image").data
+        img = Image.open(io.BytesIO(input))
+        result = self.pipe(img)
         self.filelogger.info("result: %s" % result)
 
         # 使用Response封装result

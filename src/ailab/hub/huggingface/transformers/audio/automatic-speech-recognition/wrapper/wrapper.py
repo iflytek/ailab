@@ -62,7 +62,6 @@ class Wrapper(WrapperBase):
         return 0
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
-        # 读取测试图片并进行模型推理
         self.filelogger.info("got reqdata , %s" % reqData.list)
         input_audio = reqData.get("audio").data
         result = self.pipe(input_audio)
@@ -96,5 +95,5 @@ class Wrapper(WrapperBase):
 
 if __name__ == '__main__':
     m = Wrapper(legacy=False)
-    #m.run()
+    m.run()
     print(m.schema())

@@ -2,10 +2,11 @@
 # coding:utf-8
 """
 @license: Apache License2
-@file: wrapper.py
-@time: 2023.02.27
+@Author: xiaohan4
+@time: 2023/02/28
+@project: ailab
 """
-
+# 此代码有点问题
 import json
 import os.path
 
@@ -17,7 +18,7 @@ except:
     from aiges.dto import Response, ResponseData, DataListNode, DataListCls
 
 from aiges.sdk import WrapperBase, \
-    JsonBodyField, StringBodyField, \
+    JsonBodyField, StringBodyField, ImageBodyField, \
     StringParamField
 from aiges.utils.log import log, getFileLogger
 
@@ -26,15 +27,19 @@ import io
 
 # from ifly_atp_sdk.huggingface.pipelines import pipeline
 from transformers import pipeline
+from PIL import Image
+import cv2
 
 # 使用的模型
-model = "distilbert-base-uncased-finetuned-sst-2-english"
+model = "MCG-NJU/videomae-base-finetuned-kinetics"
+task = "video-classification-pipeline"
 
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    input1 = StringBodyField(key="text", value=b"i feel full of power")
-    input2 = StringParamField(key="task", value="sentiment-analysis")
+    # 使用ImageBodyField接受的吗？
+    input1 = ImageBodyField(key="video", path='./person.mp4')
+    input2 = StringParamField(key="task", value=task)
 
 
 # 定义模型的输出参数
@@ -44,7 +49,7 @@ class UserResponse(object):
 
 # 定义服务推理逻辑
 class Wrapper(WrapperBase):
-    serviceId = "sentiment-analysis-pipeline"
+    serviceId = task
     version = "v1"
     requestCls = UserRequest()
     responseCls = UserResponse()
@@ -61,9 +66,12 @@ class Wrapper(WrapperBase):
         return 0
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
+        # 读取测试图片并进行模型推理
         self.filelogger.info("got reqdata , %s" % reqData.list)
-        input_text = reqData.get("text").data.decode("utf-8")
-        result = self.pipe(input_text)
+        input = reqData.get("video").data
+        # TODO 视频文件fp没找到
+        video = "./person.mp4"
+        result = self.pipe(video)
         self.filelogger.info("result: %s" % result)
 
         # 使用Response封装result

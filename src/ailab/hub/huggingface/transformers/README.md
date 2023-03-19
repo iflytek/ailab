@@ -1,11 +1,11 @@
 # pipeline
-url: https://huggingface.co/docs/transformers/v4.26.1/en/main_classes/pipelines#transformers.DepthEstimationPipeline
-## Audio
+related url: https://huggingface.co/tasks
+## Audio (预装ffmpeg)
 1. AudioClassificationPipeline
 2. AutomaticSpeechRecognitionPipeline
 ## Computer vision
 1. DepthEstimationPipeline
-2. **ImageClassificationPipeline**
+2. ImageClassificationPipeline
 3. ImageSegmentationPipeline
 4. ObjectDetectionPipeline
 5. VideoClassificationPipeline
@@ -29,3 +29,6 @@ url: https://huggingface.co/docs/transformers/v4.26.1/en/main_classes/pipelines#
 2. FeatureExtractionPipeline
 3. ImageToTextPipeline
 4. VisualQuestionAnsweringPipeline
+
+### notice：
+You may need to modify Dockerfile content as needed
