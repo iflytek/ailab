@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # coding:utf-8
 """ 
-@author: xiaohan4
+@author: hanxiao
 @license: Apache Licence 
 @file: download_pipeline_models.py
 @time: 2023/3/19
-@contact: xiaohan4@iflytek.com
+@contact: 1043599451@qq.com
 @site:  
 @software: PyCharm 
 
@@ -24,7 +24,6 @@
                   ┃┫┫  ┃┫┫
                   ┗┻┛  ┗┻┛ 
 """
-import transformers
 #  Copyright (c) 2022. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
 #  Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
 #  Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
@@ -34,7 +33,8 @@ import transformers
 from transformers.pipelines import pipeline, SUPPORTED_TASKS
 from concurrent.futures import ThreadPoolExecutor, wait
 
-# 通过pipeline下载所有task默认模型
+
+# 直接通过pipeline下载所有task默认模型
 def get_default_task_models(workders=8):
     pool = ThreadPoolExecutor(max_workers=workders)
     futures = []
