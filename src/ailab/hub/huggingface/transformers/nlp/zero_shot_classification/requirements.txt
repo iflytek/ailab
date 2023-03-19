@@ -1,0 +1,4 @@
+# please keep the aiges for the latest
+aiges==0.7.6
+transformers==4.27.1
+torch==2.0.0
