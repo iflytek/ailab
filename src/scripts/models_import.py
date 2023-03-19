@@ -158,7 +158,8 @@ class ModelsDirectoryIter:
                 fi_or_dirs2 = os.listdir(level2_dir)
                 if "config.json" in fi_or_dirs2:
                     repo = u
-                    self.new_repo(task, repo, self.source, repo)
+                    # 如果没有用户级，默认huggingface
+                    self.new_repo(task, self.source, repo, self.source, repo)
                 else:
                     for rp in fi_or_dirs2:
                         level3_dir = f"{self.root}/{task}/{u}/{rp}"
@@ -166,14 +167,11 @@ class ModelsDirectoryIter:
                         if "config.json" in fi_or_dirs3:
                             user = u
                             repo = rp
-                            self.new_repo(task, repo, self.source, f"{u}/{repo}")
+                            # 有用户级
+                            self.new_repo(task, user, repo, self.source, f"{user}/{repo}")
 
-    def new_repo(self, task, name, source="huggingface", origin_name=""):
-        r = Repo()
-        r.name = name
-        r.task = task
-        r.source = source
-        r.origin_name = origin_name
+    def new_repo(self, task, owner, name, source="huggingface", origin_name=""):
+        r = Repo(task, owner, name, origin_name, source)
         self.repos.append(r)
 
 
