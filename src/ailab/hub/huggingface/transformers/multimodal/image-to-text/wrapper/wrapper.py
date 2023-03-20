@@ -23,17 +23,14 @@ from aiges.sdk import WrapperBase, \
     StringBodyField, StringParamField
 from aiges.utils.log import log, getFileLogger
 
-task = "document-question-answering"
-model = "impira/layoutlm-document-qa"
+task = "image-to-text"
+model = "ydshieh/vit-gpt2-coco-en"
 input1_key = "image"
-input2_key = "text"
 
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    input1 = ImageBodyField(key=input1_key, path="./doc.png")
-    input2 = StringBodyField(key=input2_key,
-                             value="What is the idea behind the consumer relations efficiency team?".encode("utf-8"))
+    input1 = ImageBodyField(key=input1_key, path="./cat.jpg")
 
 
 # 定义模型的输出参数
@@ -63,8 +60,7 @@ class Wrapper(WrapperBase):
         self.filelogger.info("got reqdata , %s" % reqData.list)
         image_bytes = reqData.get(input1_key).data
         input_image = Image.open(io.BytesIO(image_bytes))
-        input_text = reqData.get(input2_key).data.decode("utf-8")
-        result = self.pipe(image=input_image, question=input_text)
+        result = self.pipe(input_image)
         self.filelogger.info(result)
 
         # 使用Response封装result

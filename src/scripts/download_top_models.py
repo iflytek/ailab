@@ -104,4 +104,5 @@ def get_datasets():
 
 
 if __name__ == '__main__':
-    download_models(16)
+    # download_models(16)
+    get_task_models()
