@@ -25,7 +25,7 @@ related url: https://huggingface.co/tasks
 11. TranslationPipeline
 12. ZeroShotClassificationPipeline
 ## Multimodal
-1. DocumentQuestionAnsweringPipeline
+1. DocumentQuestionAnsweringPipeline(预装tesseract)
 2. FeatureExtractionPipeline
 3. ImageToTextPipeline
 4. VisualQuestionAnsweringPipeline

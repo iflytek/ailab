@@ -3,14 +3,15 @@
 """
 @license: Apache License2
 @author: hanxiao
-@time: 2023/03/19
+@time: 2023/03/20
 @project: ailab
 """
-
+import io
 import json
 from aiges.core.types import *
 # from ifly_atp_sdk.huggingface.pipelines import pipeline
 from transformers import pipeline
+from PIL import Image
 
 try:
     from aiges_embed import ResponseData, Response, DataListNode, DataListCls  # c++
@@ -18,21 +19,26 @@ except:
     from aiges.dto import Response, ResponseData, DataListNode, DataListCls
 
 from aiges.sdk import WrapperBase, \
-    AudioBodyField, \
+    AudioBodyField, ImageBodyField, \
     StringBodyField, StringParamField
 from aiges.utils.log import log, getFileLogger
 
-task = "audio-classification"
-model = "superb/wav2vec2-base-superb-ks"
-input1_key = "audio"
+task = "document-question-answering"
+model = "impira/layoutlm-document-qa"
+input1_key = "image"
+input2_key = "text"
 
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    input1 = AudioBodyField(key=input1_key, path="./mlk.flac")
+    input1 = ImageBodyField(key=input1_key, path="./doc.png")
+    input2 = StringBodyField(key=input2_key,
+                             value="What is the idea behind the consumer relations efficiency team?".encode("utf-8"))
 
 
 # 定义模型的输出参数
+
+
 class UserResponse(object):
     accept1 = StringBodyField(key="result")
 
@@ -57,10 +63,12 @@ class Wrapper(WrapperBase):
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
         self.filelogger.info("got reqdata , %s" % reqData.list)
-        input_audio = reqData.get("audio").data
-        result = self.pipe(input_audio)
-
+        image_bytes = reqData.get(input1_key).data
+        input_image = Image.open(io.BytesIO(image_bytes))
+        input_text = reqData.get(input2_key).data.decode("utf-8")
+        result = self.pipe(image=input_image, question=input_text)
         self.filelogger.info(result)
+
         # 使用Response封装result
         res = Response()
         resd = ResponseData()
