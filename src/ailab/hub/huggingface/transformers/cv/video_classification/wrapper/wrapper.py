@@ -2,13 +2,17 @@
 # coding:utf-8
 """
 @license: Apache License2
-@Author: xiaohan4
-@time: 2023/02/28
+@Author: hanxiao
+@time: 2023/03/20
 @project: ailab
 """
-# 此代码有点问题
+import base64
 import json
-import os.path
+import os
+import tempfile
+
+# from ifly_atp_sdk.huggingface.pipelines import pipeline
+from transformers import pipeline
 
 from aiges.core.types import *
 
@@ -22,24 +26,22 @@ from aiges.sdk import WrapperBase, \
     StringParamField
 from aiges.utils.log import log, getFileLogger
 
-# 导入inference.py中的依赖包
-import io
-
-# from ifly_atp_sdk.huggingface.pipelines import pipeline
-from transformers import pipeline
-from PIL import Image
-import cv2
-
 # 使用的模型
 model = "MCG-NJU/videomae-base-finetuned-kinetics"
-task = "video-classification-pipeline"
+task = "video-classification"
+input1_key = "video_base64_str"
+
+
+def local_video_to_base64_str(loc):
+    with open(loc, "rb") as f:
+        video_bytes = f.read()
+    base64_bytes = base64.b64encode(video_bytes)
+    return base64_bytes.decode("ascii")
 
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    # 使用ImageBodyField接受的吗？
-    input1 = ImageBodyField(key="video", path='./person.mp4')
-    input2 = StringParamField(key="task", value=task)
+    input1 = StringBodyField(key=input1_key, value=local_video_to_base64_str("./person.mp4").encode("ascii"))
 
 
 # 定义模型的输出参数
@@ -61,17 +63,19 @@ class Wrapper(WrapperBase):
 
     def wrapperInit(self, config: {}) -> int:
         log.info("Initializing ...")
-        self.pipe = pipeline(model=model)
+        self.pipe = pipeline(task=task, model=model)
         self.filelogger = getFileLogger()
         return 0
 
     def wrapperOnceExec(self, params: {}, reqData: DataListCls) -> Response:
-        # 读取测试图片并进行模型推理
         self.filelogger.info("got reqdata , %s" % reqData.list)
-        input = reqData.get("video").data
-        # TODO 视频文件fp没找到
-        video = "./person.mp4"
-        result = self.pipe(video)
+        input = reqData.get(input1_key).data.decode("ascii")
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file.close()
+        with open(temp_file.name, "wb") as f:
+            f.write(base64.b64decode(input))
+        result = self.pipe(temp_file.name)
+        os.remove(temp_file.name)
         self.filelogger.info("result: %s" % result)
 
         # 使用Response封装result

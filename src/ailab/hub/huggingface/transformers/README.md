@@ -34,7 +34,8 @@ related url: https://huggingface.co/tasks
 You may need to modify Dockerfile content as needed
 
 ps: tasks and their default models(pytorch):
-```{'audio-classification': ('superb/wav2vec2-base-superb-ks', '372e048'),
+``` 
+{'audio-classification': ('superb/wav2vec2-base-superb-ks', '372e048'),
  'automatic-speech-recognition': ('facebook/wav2vec2-base-960h', '55bb623'),
  'conversational': ('microsoft/DialoGPT-medium', '8bada3b'),
  'depth-estimation': ('Intel/dpt-large', 'e93beec'),
@@ -62,4 +63,5 @@ ps: tasks and their default models(pytorch):
  'visual-question-answering': ('dandelin/vilt-b32-finetuned-vqa', '4355f59'),
  'zero-shot-classification': ('facebook/bart-large-mnli', 'c626438'),
  'zero-shot-image-classification': ('openai/clip-vit-base-patch32', 'f4881ba'),
- 'zero-shot-object-detection': ('google/owlvit-base-patch32', '17740e1')}```
+ 'zero-shot-object-detection': ('google/owlvit-base-patch32', '17740e1')}
+```

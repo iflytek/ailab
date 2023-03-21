@@ -2,4 +2,3 @@
 aiges
 transformers
 torch
-decord
