@@ -36,8 +36,12 @@ import os
 from giteapy.rest import ApiException
 from pprint import pprint
 import re
+import subprocess
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED,as_completed
 
-init_tial_pwd = "abcd.1234"
+user_repo_pattern = re.compile("[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+")
+ADMIN = "administrator"
+DEFAULT_WORKERS = 8
 
 
 # 捕获异常装饰器
@@ -53,7 +57,7 @@ def catch_err(func):
 
 
 class Repo():
-    def __init__(self, task, owner, name, origin_name, source):
+    def __init__(self, task, owner, name, origin_name, source, local_path=""):
         """
         :param task:
         :param owner:
@@ -67,6 +71,9 @@ class Repo():
         self.owner = owner
         self.name = name
         self.source = source
+        self.local_path = local_path
+        if not os.path.isdir(local_path):
+            raise NotADirectoryError("please check this repo %" % self.origin_name)
 
     def check_name(self, name):
         name_regex = "(?P<user>[a-zA-Z0-9_]+)[/])*(?P<repo>[a-zA-Z0-9_]+)"
@@ -88,15 +95,19 @@ class AILABGit():
         self.user_api = giteapy.UserApi(cfg)
 
     @catch_err
-    def create_user(self, user_name):
-        us = giteapy.CreateUserOption(username=user_name, must_change_password=True, password=init_tial_pwd, )
+    def create_user(self, user_name, email):
+        us = giteapy.CreateUserOption(username=user_name, email=email, must_change_password=True,
+                                      password=initial_pwd, )
+        api_response = self.admin_api.admin_create_user(body=us)
+        pprint(api_response)
 
     @catch_err
-    def create_repo(self, repo_name, description, private=True):
+    def create_repo(self, owner, repo_name, description, private=True):
         repo = giteapy.CreateRepoOption(name=repo_name, description=description, private=private)
         # Create an organization
-        api_response = self.admin_api.admin_create_repo(self.username, repo)
+        api_response = self.admin_api.admin_create_repo(owner, repo)
         pprint(api_response)
+        return api_response
 
     @catch_err
     def create_org(self, org_name, description=""):
@@ -110,9 +121,10 @@ class AILABGit():
         pprint(api_response)
 
     @catch_err
-    def add_repo_user(self, collaborator, repo):
-        self.repo_api.repo_add_collaborator()
-        self.repo_api.repo
+    def add_repo_user(self, owner, collaborator, repo):
+        body = giteapy.AddCollaboratorOption()
+        api_response = self.repo_api.repo_add_collaborator(owner, repo, collaborator)
+        pprint(api_response)
 
     @catch_err
     def push_repo(self):
@@ -127,6 +139,17 @@ class AILABGit():
 
         return user, True
 
+    def check_get_repo(self, owner, repo) -> (giteapy.Repository, bool):
+        try:
+            repo = self.repo_api.repo_get(owner, repo)
+        except ApiException as e:
+            if e.status == 404:
+                return None, False
+            elif e.status == 409:
+                return repo, True
+
+        return repo, True
+
 
 class ModelsDirectoryIter:
     """
@@ -134,12 +157,14 @@ class ModelsDirectoryIter:
     /mnt/atpdata/models_hub/huggingface
     """
 
-    def __init__(self, path="/mnt/atpdata/models_hub/huggingface", source="huggingface"):
+    def __init__(self, git: AILABGit = None, path="/mnt/atpdata/models_hub/huggingface", source="huggingface"):
         self.root = path
         self.repos = []
         self.source = source
-
+        self.git = git
         self.init_repos()
+        self.executor = ThreadPoolExecutor(max_workers=DEFAULT_WORKERS)
+        self.jobs = []
 
     def init_repos(self):
         """
@@ -159,7 +184,7 @@ class ModelsDirectoryIter:
                 if "config.json" in fi_or_dirs2:
                     repo = u
                     # 如果没有用户级，默认huggingface
-                    self.new_repo(task, self.source, repo, self.source, repo)
+                    self.add2repos(task, self.source, repo, self.source, repo, level2_dir)
                 else:
                     for rp in fi_or_dirs2:
                         level3_dir = f"{self.root}/{task}/{u}/{rp}"
@@ -168,14 +193,56 @@ class ModelsDirectoryIter:
                             user = u
                             repo = rp
                             # 有用户级
-                            self.new_repo(task, user, repo, self.source, f"{user}/{repo}")
+                            self.add2repos(task, user, repo, self.source, f"{user}/{repo}", level3_dir)
 
-    def new_repo(self, task, owner, name, source="huggingface", origin_name=""):
-        r = Repo(task, owner, name, origin_name, source)
+    def add2repos(self, task, owner, name, source="huggingface", origin_name="", local_path=""):
+        r = Repo(task, owner, name, origin_name, source, local_path)
         self.repos.append(r)
+
+    def new_repo(self, r: Repo):
+        # 1. get user, repo
+        user, repo = "", ""
+        if re.match(user_repo_pattern, r.origin_name):
+            user, repo = r.origin_name.split('/')
+        else:
+            user = r.source
+            repo = r.origin_name
+
+        if not user or not repo:
+            raise Exception("Exception check repo name... %s from %s" % (r.name, r.source))
+        # 2. create user if not exists
+        ## todo
+        _user, exists = self.git.check_get_user(user)
+        if not exists:
+            self.git.create_user(user, email=f'{user}@iflytek.com')
+
+        # 3. create repo if not exists
+        _repo, exists = self.git.check_get_repo(user, repo)
+        if not exists:
+            _repo = self.git.create_repo(user, repo, description="ailab model..", private=False)
+        ssh_url = _repo.ssh_url
+        print(ssh_url)
+        # 4. add collabrator to repo
+        self.git.add_repo_user(user, ADMIN, repo)
+
+        self.jobs.append(self.executor.submit(initial_push_repo, ssh_url, r))
+
+
+def initial_push_repo(ssh_url, r: Repo):
+    cwd = os.getcwd()
+    os.chdir(r.local_path)
+    cmds = ["git remote  add ailab %s" % ssh_url,
+            "git push -u ailab main"
+            ]
+    # cmds = ["ls -l"]
+    print("executing....")
+    for cmd in cmds:
+        subprocess.call(cmd, shell=True)
+    return "ok"
 
 
 if __name__ == '__main__':
+    initial_pwd = os.environ.get("AILAB_REPO_INIT_PWD")
     token = os.environ.get("GITEA_ADMIN_TOKEN")
     host = os.environ.get("GITEA_API_URL")
     if not token:
@@ -183,10 +250,17 @@ if __name__ == '__main__':
         exit()
 
     c = AILABGit(access_token=token, host=host,
-                 username="administrator")
+                 username=ADMIN)
 
     # c.create_repo("test5", description="niubi")
     # c.create_org("huggingface")
-    print(c.check_get_user("administrator"))
-    b = ModelsDirectoryIter()
-    print(len(b.repos))
+    print(c.check_get_user(ADMIN))
+    b = ModelsDirectoryIter(c)
+    for r in b.repos:
+        b.new_repo(r)
+
+    for future in as_completed(b.jobs):
+        data = future.result()
+        print("{}".format(data))
+
+    wait(b.jobs, return_when=ALL_COMPLETED)
