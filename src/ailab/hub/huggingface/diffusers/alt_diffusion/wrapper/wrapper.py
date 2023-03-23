@@ -83,7 +83,7 @@ class Wrapper(WrapperBase):
         resd.status = Once
         img_bytes = io.BytesIO()
         result.save(img_bytes, format="png")
-        result.save("./幻想风景.png", format="PNG")
+        result.save("./fantansy.png", format="PNG")
         resd.setData(img_bytes.getvalue())
         res.list = [resd]
         return res
