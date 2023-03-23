@@ -231,7 +231,7 @@ class ModelsDirectoryIter:
         self.repos.append(r)
 
     def check_readme_meta(self, path):
-        rfile = f"{r.local_path}/README.md"
+        rfile = f"{path}/README.md"
         if not os.path.exists(rfile):
             return {}
         meta = {}
@@ -319,20 +319,9 @@ def initial_push_repo(ssh_url, r: Repo):
     return "ok"
 
 
-if __name__ == '__main__':
-    initial_pwd = os.environ.get("AILAB_REPO_INIT_PWD")
-    token = os.environ.get("GITEA_ADMIN_TOKEN")
-    host = os.environ.get("GITEA_API_URL")
-    if not token:
-        print("please set GITEA_ADMIN_TOKEN")
-        exit()
-
+def import_from_dir():
     c = AILABGit(access_token=token, host=host,
                  username=ADMIN)
-
-    # c.create_repo("test5", description="niubi")
-    # c.create_org("huggingface")
-    print(c.check_get_user(ADMIN))
     b = ModelsDirectoryIter(c)
     for r in b.repos:
         b.new_repo(r, RepoType.Model)
@@ -342,3 +331,16 @@ if __name__ == '__main__':
         print("{}".format(data))
 
     wait(b.jobs, return_when=ALL_COMPLETED)
+
+
+if __name__ == '__main__':
+    initial_pwd = os.environ.get("AILAB_REPO_INIT_PWD")
+    token = os.environ.get("GITEA_ADMIN_TOKEN")
+    host = os.environ.get("GITEA_API_URL")
+    if not token:
+        print("please set GITEA_ADMIN_TOKEN")
+        exit()
+
+    # c.create_repo("test5", description="niubi")
+    # c.create_org("huggingface")
+    import_from_dir()
