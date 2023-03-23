@@ -79,14 +79,15 @@ class Infer(InferClass):
         input_status = req.status
         r = random.randint(1, 100000)
         now = datetime.datetime.now().strftime("%y-%m-%d: %H:%M")
-        output = f'iam the mock result for test: {now}  {r}'
+        #output = f'iam the mock result for test: {now}  {r}'
 
-        # output = self.model.predict(human_input=input_text)
+        output = self.model.predict(human_input=input_text)
         r = Response()
         d = ResponseData()
         d.setData(output.encode("utf-8"))
         all_done = False
         d.key = "response"
+        log.info([input_status])
         if input_status == DataContinue:
             d.status = DataContinue
         elif input_status == DataEnd:
@@ -96,8 +97,11 @@ class Infer(InferClass):
         elif input_status == DataOnce:
             d.status = DataEnd
             all_done = True
+        elif input_status ==DataBegin:
+            d.status = DataContinue
+
         r.list = [d]
-        log.debug("handle callback %s" % self.tag)
+        log.info("handle callback %s, callback, status: %s" % (self.tag,d.status))
         callback(r, self.tag, self.sid)
         return output, all_done
 
@@ -172,9 +176,7 @@ class Wrapper(WrapperBase):
         lics = 10
         self.pool = FixedPool()
         self.pool.set_capacity(int(config.get("common.lic", lics)))
-        # Wrapper.session_total = config.get("common.lic", lics)
-        # self.session.init_wrapper_config(config)
-        # self.session.init_handle_pool("thread", lics, InfermStream)
+
         return 0
 
     '''
