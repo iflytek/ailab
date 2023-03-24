@@ -9,6 +9,7 @@
 import json
 import os.path
 
+import PIL
 from aiges.core.types import *
 
 try:
@@ -24,19 +25,19 @@ from aiges.utils.log import log, getFileLogger
 import io
 # from ifly_atp_sdk.huggingface.pipelines import pipeline
 from transformers import pipeline
-from diffusers import StableDiffusionUpscalePipeline
+from diffusers import StableDiffusionInstructPix2PixPipeline
 from PIL import Image
 import torch
 
 # 使用的模型
-model = "stabilityai/stable-diffusion-x4-upscaler"
-task = "stable-diffusion-super-resolution"
-prompt = "a white cat"
+model = "timbrooks/instruct-pix2pix"
+task = "stable-diffusion-image-to-image"
+prompt = "make the mountains snowy"
 device = "cuda"
 
 # 定义模型的超参数和输入参数
 class UserRequest(object):
-    input1 = ImageBodyField(key="image", path='./low_res_cat.png')
+    input1 = ImageBodyField(key="image", path='./mountain.png')
     input2 = StringParamField(key="task", value=task)
 
 
@@ -60,7 +61,7 @@ class Wrapper(WrapperBase):
     def wrapperInit(self, config: {}) -> int:
         log.info("Initializing ...")
         # pipeline(model=model)
-        self.pipe = StableDiffusionUpscalePipeline.from_pretrained(model, revision="fp16", torch_dtype=torch.float16).to("cuda")
+        self.pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(model, torch_dtype=torch.float16).to("cuda")
         self.filelogger = getFileLogger()
         return 0
 
@@ -69,9 +70,9 @@ class Wrapper(WrapperBase):
         self.filelogger.info("got reqdata , %s" % reqData.list)
         input = reqData.get("image").data
         img = Image.open(io.BytesIO(input))
+        img = PIL.ImageOps.exif_transpose(img)
         img = img.convert("RGB")
-        img = img.resize((128, 128))
-        result = self.pipe(prompt=prompt, image=img).images[0]
+        result = self.pipe(prompt=prompt, image=img, num_inference_steps=20, image_guidance_scale=1.5, guidance_scale=7).images[0]
         self.filelogger.info("result: %s" % result)
 
 
@@ -83,7 +84,7 @@ class Wrapper(WrapperBase):
         resd.status = Once
         img_bytes = io.BytesIO()
         result.save(img_bytes, format="png")
-        result.save("./upsampled_cat.png", format="PNG")
+        result.save("./snowy_mountains.png", format="PNG")
         resd.setData(img_bytes.getvalue())
         res.list = [resd]
         return res
