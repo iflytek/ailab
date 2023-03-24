@@ -37,11 +37,12 @@ import datasets
 import subprocess
 from transformers.pipelines import get_default_model_and_revision, check_task, SUPPORTED_TASKS
 from transformers.utils import HUGGINGFACE_CO_RESOLVE_ENDPOINT
+from util.hub_utils import list_models_by_task
 
 defautl_download_dir = "/mnt/atpdata/models_hub/huggingface"
 
 
-def get_task_models():
+def get_task_default_models():
     models_hub_dict = {}
     # 从本地文件分析
     # for task, spec in supported_task.items():
@@ -86,14 +87,27 @@ def git_clone(task, model_name, revision, local_dir=defautl_download_dir):
     pass
 
 
-def download_models(workers_num=6):
-    tm = get_task_models()
+def download_task_default_models(workers_num=6):
+    tm = get_task_default_models()
     pool = ThreadPoolExecutor(max_workers=workers_num)
 
     futures = []
     for task_name, t in tm.items():
         repo, revision = t
         futures.append(pool.submit(git_clone, task_name, repo, revision))
+
+    wait(futures, return_when=ALL_COMPLETED)
+
+
+def download_top_default_models(workers_num=10, top=11):
+    tm = get_task_default_models()
+    pool = ThreadPoolExecutor(max_workers=workers_num)
+
+    futures = []
+    for task, spec in SUPPORTED_TASKS.items():
+        models = list_models_by_task(task, top=top)
+        for model in models:
+            futures.append(pool.submit(git_clone, task, model.id, "main"))
 
     wait(futures, return_when=ALL_COMPLETED)
 
@@ -105,4 +119,5 @@ def get_datasets():
 
 if __name__ == '__main__':
     # download_models(16)
-    get_task_models()
+    # get_task_default_models()
+    download_top_default_models()

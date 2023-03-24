@@ -1,3 +1,5 @@
 transformers
 datasets
 giteapy
+markdown2
+huggingface_hub

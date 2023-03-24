@@ -30,6 +30,8 @@
 #  Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
 #  Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
 #  Vestibulum commodo. Ut rhoncus gravida arcu.
+import json
+from enum import Enum, unique
 
 import giteapy
 import os
@@ -37,7 +39,8 @@ from giteapy.rest import ApiException
 from pprint import pprint
 import re
 import subprocess
-from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED,as_completed
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED, as_completed
+import markdown2
 
 user_repo_pattern = re.compile("[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+")
 ADMIN = "administrator"
@@ -54,6 +57,15 @@ def catch_err(func):
             return None
 
     return wrapper
+
+
+#
+@unique
+class RepoType(Enum):
+    Model = 0
+    DataSet = 1
+    Demo = 2
+    Other = 3
 
 
 class Repo():
@@ -121,6 +133,12 @@ class AILABGit():
         pprint(api_response)
 
     @catch_err
+    def update_repo_meta(self, owner, repo, description=""):
+        repo_option = giteapy.EditRepoOption(description=description, name=repo)
+        api_response = self.repo_api.repo_edit(owner=owner, repo=repo, body=repo_option)
+        pprint(api_response)
+
+    @catch_err
     def add_repo_user(self, owner, collaborator, repo):
         body = giteapy.AddCollaboratorOption()
         api_response = self.repo_api.repo_add_collaborator(owner, repo, collaborator)
@@ -129,6 +147,19 @@ class AILABGit():
     @catch_err
     def push_repo(self):
         self.repo_api.repo_add_collaborator()
+
+    @catch_err
+    def update_topic(self, owner, repo, topics=None):
+        option = giteapy.RepoTopicOptions(topics=topics)
+        api_response = self.repo_api.repo_update_topics(owner=owner, repo=repo, body=option)
+        pprint(api_response)
+        return api_response
+
+    @catch_err
+    def get_topic(self, owner, repo):
+        api_response = self.repo_api.repo_list_topics(owner=owner, repo=repo)
+        pprint(api_response)
+        return api_response
 
     def check_get_user(self, user) -> (giteapy.User, bool):
         try:
@@ -199,7 +230,22 @@ class ModelsDirectoryIter:
         r = Repo(task, owner, name, origin_name, source, local_path)
         self.repos.append(r)
 
-    def new_repo(self, r: Repo):
+    def check_readme_meta(self, path):
+        rfile = f"{path}/README.md"
+        if not os.path.exists(rfile):
+            return {}
+        meta = {}
+        with open(rfile, 'rb') as rd:
+            html = markdown2.markdown(rd.read().decode("utf-8"), extras=["metadata"])
+            print("metadata: ", html.metadata)
+
+        return html.metadata
+
+    def new_repo(self, r: Repo, rt: RepoType):
+        # 0. check meta,  license adn so on
+        ### todo
+        metadata = self.check_readme_meta(r.local_path)
+
         # 1. get user, repo
         user, repo = "", ""
         if re.match(user_repo_pattern, r.origin_name):
@@ -211,18 +257,50 @@ class ModelsDirectoryIter:
         if not user or not repo:
             raise Exception("Exception check repo name... %s from %s" % (r.name, r.source))
         # 2. create user if not exists
-        ## todo
         _user, exists = self.git.check_get_user(user)
         if not exists:
             self.git.create_user(user, email=f'{user}@iflytek.com')
 
         # 3. create repo if not exists
         _repo, exists = self.git.check_get_repo(user, repo)
+
+        # topic = {"type": rt.name.lower()}
+        description = f"{user}/{repo} is a forked repo from {r.source}."
         if not exists:
-            _repo = self.git.create_repo(user, repo, description="ailab model..", private=False)
+            _repo = self.git.create_repo(user, repo, description=description, private=False)
         ssh_url = _repo.ssh_url
         print(ssh_url)
-        # 4. add collabrator to repo
+
+        # 3.1 topics
+        topics_res = self.git.get_topic(user, repo)
+        topics = topics_res.topics
+        if not topics:
+            topics = []
+        if not rt.name.lower() in topics:
+            topics.append(rt.name.lower())
+        lic = metadata.get("license", None)
+        if lic:
+            print(type(lic))
+            if isinstance(lic, list):
+                lic = lic[0]
+
+            lic = lic.replace(".", "-")
+            lic = lic.replace(" ", "-")
+
+            lic_label = f"{lic}"
+            if lic_label not in topics:
+                topics.append(lic_label)
+
+        if r.task not in topics:
+            topics.append(r.task)
+
+        print("updating topics: %s" % (str(topics)))
+        self.git.update_topic(user, repo, topics)
+        # 4. update repo meta
+        description += f" License: {lic}"
+
+        self.git.update_repo_meta(user, repo, description=description)
+        # 5. add collabrator to repo
         self.git.add_repo_user(user, ADMIN, repo)
 
         self.jobs.append(self.executor.submit(initial_push_repo, ssh_url, r))
@@ -241,6 +319,20 @@ def initial_push_repo(ssh_url, r: Repo):
     return "ok"
 
 
+def import_from_dir():
+    c = AILABGit(access_token=token, host=host,
+                 username=ADMIN)
+    b = ModelsDirectoryIter(c)
+    for r in b.repos:
+        b.new_repo(r, RepoType.Model)
+
+    for future in as_completed(b.jobs):
+        data = future.result()
+        print("{}".format(data))
+
+    wait(b.jobs, return_when=ALL_COMPLETED)
+
+
 if __name__ == '__main__':
     initial_pwd = os.environ.get("AILAB_REPO_INIT_PWD")
     token = os.environ.get("GITEA_ADMIN_TOKEN")
@@ -249,18 +341,6 @@ if __name__ == '__main__':
         print("please set GITEA_ADMIN_TOKEN")
         exit()
 
-    c = AILABGit(access_token=token, host=host,
-                 username=ADMIN)
-
     # c.create_repo("test5", description="niubi")
     # c.create_org("huggingface")
-    print(c.check_get_user(ADMIN))
-    b = ModelsDirectoryIter(c)
-    for r in b.repos:
-        b.new_repo(r)
-
-    for future in as_completed(b.jobs):
-        data = future.result()
-        print("{}".format(data))
-
-    wait(b.jobs, return_when=ALL_COMPLETED)
+    import_from_dir()

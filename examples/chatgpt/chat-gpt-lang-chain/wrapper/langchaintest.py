@@ -42,9 +42,10 @@ Assistant is constantly learning and improving, and its capabilities are constan
 
 Overall, Assistant is a powerful tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist.
 
-{history}
-Human: {human_input}
-Assistant:"""
+# template = """
+# {history}
+# Human: {human_input}
+# Assistant:"""
 
 prompt = PromptTemplate(
     input_variables=["history", "human_input"],
@@ -52,15 +53,17 @@ prompt = PromptTemplate(
 )
 
 chatgpt_chain = LLMChain(
-    llm=OpenAIChat(model_name='gpt-3.5-turbo', temperature=0,
-                   openai_api_key="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"),
+    llm=OpenAIChat(model_name='gpt-3.5-turbo',
+                   openai_api_key="sk-"),
     prompt=prompt,
     verbose=True,
     memory=ConversationalBufferWindowMemory(k=100),
 )
 
-output = chatgpt_chain.predict(human_input="计算机是由什么组成的?")
-print(output)
+is_stopping = False
+while not is_stopping:
+    human_input = input("please input:  ")
 
-output = chatgpt_chain.predict(human_input="能说的详细一点吗")
-print(output)
+    output = chatgpt_chain.predict(human_input=human_input)
+    print(output)
+
